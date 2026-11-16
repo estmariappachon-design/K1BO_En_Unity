@@ -1,0 +1,12 @@
+fileFormatVersion: 2
+guid: d6b1f3dbdbd883c47904a3eb0a1b4f58
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences:
+  - Ambiente_K1B0: {fileID: 8300000, guid: 3bea4f5ce0801f647a5b3582f1d7f4c2, type: 3}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
