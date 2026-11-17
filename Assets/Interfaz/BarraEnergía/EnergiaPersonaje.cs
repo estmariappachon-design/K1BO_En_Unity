@@ -6,26 +6,24 @@ public class EnergiaPersonaje : MonoBehaviour
     [Header("UI")]
     public Slider sliderEnergia;
 
-    [Header("Valores de energía")]
+    [Header("Valores de energÃ­a")]
     public float energiaMaxima = 100f;
     public float energiaActual = 100f;
 
-    [Header("Disminución")]
+    [Header("DisminuciÃ³n")]
     public float energiaQuePierdePorSegundo = 0.33f;
 
     [Header("Recarga")]
     public float energiaQueRecargaPorSegundo = 15f;
     public KeyCode teclaRecargar = KeyCode.N;
 
-    [Header("Animación")]
+    [Header("AnimaciÃ³n")]
     public Animator anim;
 
     private bool estaRecargando = false;
 
     void Start()
     {
-        Debug.Log("EnergiaPersonaje sí inició en: " + gameObject.name);
-
         energiaMaxima = 100f;
         energiaActual = energiaMaxima;
 
@@ -41,11 +39,8 @@ public class EnergiaPersonaje : MonoBehaviour
     {
         if (GameManager.Instance == null)
         {
-            Debug.Log("No hay GameManager.Instance");
             return;
         }
-
-        Debug.Log("Update energía | juegoIniciado: " + GameManager.Instance.juegoIniciado);
 
         if (!GameManager.Instance.juegoIniciado)
         {
@@ -74,23 +69,16 @@ public class EnergiaPersonaje : MonoBehaviour
 
     void BajarEnergia()
     {
-        float perdida = energiaQuePierdePorSegundo * Time.unscaledDeltaTime;
+        float perdida = energiaQuePierdePorSegundo * Time.deltaTime;
 
         energiaActual -= perdida;
         energiaActual = Mathf.Clamp(energiaActual, 0, energiaMaxima);
 
-        Debug.Log(
-            "Objeto: " + gameObject.name +
-            " | Pierde por segundo: " + energiaQuePierdePorSegundo +
-            " | DeltaTime: " + Time.unscaledDeltaTime +
-            " | Pérdida real: " + perdida +
-            " | Energía actual: " + energiaActual
-        );
     }
 
     void RecargarEnergia()
     {
-        energiaActual += energiaQueRecargaPorSegundo * Time.unscaledDeltaTime;
+        energiaActual += energiaQueRecargaPorSegundo * Time.deltaTime;
         energiaActual = Mathf.Clamp(energiaActual, 0, energiaMaxima);
     }
 

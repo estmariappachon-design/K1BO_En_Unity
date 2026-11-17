@@ -14,3 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ItemData
   nombreItem: IN_papelesRayados
   icono: {fileID: 21300000, guid: 975bbfe220a49444caa9331215406bc3, type: 3}
+  nombreVisible: Papel rayado
+  canecaManual: 1
+  caneca: 0
+  explicacion: "El papel y el cart\xF3n limpios y secos se reciclan."

@@ -7,8 +7,14 @@ public class AbrirMinijuego : MonoBehaviour
 
     void OnMouseDown()
     {
-        // Evita abrir múltiples veces el minijuego
+        // Evita abrir mÃºltiples veces el minijuego
         if (GameManager.Instance != null && GameManager.Instance.estaEnMinijuego)
+            return;
+
+        // No abrir mientras hay una ventana abierta o el clic fue sobre la interfaz
+        if (KiboElOrigen.KiboJuego.EntradaBloqueada)
+            return;
+        if (KiboElOrigen.KiboUtil.PunteroSobreUI())
             return;
 
         // Oculta el cubo

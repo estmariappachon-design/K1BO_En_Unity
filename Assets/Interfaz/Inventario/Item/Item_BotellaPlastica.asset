@@ -14,3 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ItemData
   nombreItem: IN_botellasPlastico
   icono: {fileID: 21300000, guid: 4bc141880a64e4b4cbfc83594ccaebdd, type: 3}
+  nombreVisible: "Botella de pl\xE1stico"
+  canecaManual: 1
+  caneca: 0
+  explicacion: "El pl\xE1stico limpio se puede reciclar."

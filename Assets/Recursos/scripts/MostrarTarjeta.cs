@@ -11,12 +11,12 @@ public class MostrarTarjeta : MonoBehaviour
     {
         tarjeta.SetActive(true);
 
-        // posicionar frente a la c·mara
+        // posicionar frente a la c√°mara
         tarjeta.transform.position =
             camaraJugador.position +
             camaraJugador.forward * offset.z;
 
-        // mirar hacia la c·mara
+        // mirar hacia la c√°mara
         tarjeta.transform.LookAt(camaraJugador);
 
         // girarla correctamente

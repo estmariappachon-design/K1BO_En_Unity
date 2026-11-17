@@ -14,3 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ItemData
   nombreItem: IN_cajasCereal
   icono: {fileID: 21300000, guid: 12572a906aacb2745a7d6c5f23856d47, type: 3}
+  nombreVisible: Caja de cereal
+  canecaManual: 1
+  caneca: 0
+  explicacion: "El papel y el cart\xF3n limpios y secos se reciclan."

@@ -3,7 +3,7 @@ using UnityEngine.UI;
 
 public class EstadoOjos : MonoBehaviour
 {
-    [Header("Referencia a la energía")]
+    [Header("Referencia a la energÃ­a")]
     public PlayerAnimations energia;
 
     [Header("Imagen UI")]

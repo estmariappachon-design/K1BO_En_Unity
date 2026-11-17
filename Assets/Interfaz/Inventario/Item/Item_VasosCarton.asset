@@ -14,3 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ItemData
   nombreItem: IN_vasosCarton
   icono: {fileID: 21300000, guid: 00dcc9944a768d04baf4595d6931234e, type: 3}
+  nombreVisible: Vaso desechable
+  canecaManual: 1
+  caneca: 1
+  explicacion: "Los vasos desechables usados est\xE1n sucios y mezclan materiales."

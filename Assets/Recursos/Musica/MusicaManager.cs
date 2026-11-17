@@ -3,7 +3,7 @@ using UnityEngine;
 [RequireComponent(typeof(AudioSource))]
 public class MusicaManager : MonoBehaviour
 {
-    [Header("Configuración de Música")]
+    [Header("ConfiguraciÃ³n de MÃºsica")]
     public AudioClip Ambiente_K1B0;
 
     private AudioSource audioSource;
@@ -15,12 +15,14 @@ public class MusicaManager : MonoBehaviour
         // Configurar el AudioSource
         audioSource.clip = Ambiente_K1B0;
         audioSource.loop = true;        // Se repite 
-        audioSource.playOnAwake = false; 
+        audioSource.playOnAwake = false;
+        audioSource.volume = KiboElOrigen.KiboAjustes.VolumenMusica; // volumen de Ajustes
     }
 
     void OnEnable()
     {
-        audioSource.Play(); // Suena al activarse/correr
+        if (audioSource != null && audioSource.clip != null)
+            audioSource.Play(); // Suena al activarse/correr
     }
 
     void OnDisable()

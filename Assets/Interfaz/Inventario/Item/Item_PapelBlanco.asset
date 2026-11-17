@@ -14,3 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ItemData
   nombreItem: IN_papeles
   icono: {fileID: 21300000, guid: d918d234aa21a6440b3278236beaea2a, type: 3}
+  nombreVisible: Papel blanco
+  canecaManual: 1
+  caneca: 0
+  explicacion: "El papel y el cart\xF3n limpios y secos se reciclan."

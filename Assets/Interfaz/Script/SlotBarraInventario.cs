@@ -16,6 +16,7 @@ public class SlotBarraInventario : MonoBehaviour
     {
         itemActual = item;
 
+        if (iconoItem == null) return;
         iconoItem.sprite = item.icono;
         iconoItem.color = new Color(1, 1, 1, 1);
     }
@@ -24,6 +25,7 @@ public class SlotBarraInventario : MonoBehaviour
     {
         itemActual = null;
 
+        if (iconoItem == null) return;
         iconoItem.sprite = null;
         iconoItem.color = new Color(1, 1, 1, 0);
     }

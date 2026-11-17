@@ -16,7 +16,7 @@ public class InventarioFullUI : MonoBehaviour
             }
         }
 
-        // Si no existe, busca un slot vacío
+        // Si no existe, busca un slot vacÃ­o
         foreach (SlotInventarioFull slot in slotsFull)
         {
             if (slot.EstaVacio())

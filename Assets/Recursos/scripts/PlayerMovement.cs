@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 
 public class PlayerMovement : MonoBehaviour
 {
@@ -14,6 +14,10 @@ public class PlayerMovement : MonoBehaviour
 
     [Header("Referencia visual")]
     public Transform model;
+
+    [Header("Cámara")]
+    [Tooltip("W camina hacia donde mira la cámara (útil al girar la cámara o en primera persona)")]
+    public bool relativoACamara = true;
 
     private Rigidbody rb;
 
@@ -35,11 +39,19 @@ public class PlayerMovement : MonoBehaviour
 
     void Update()
     {
+        // Quieto mientras hay una ventana abierta (clasificar, pausa, ¡ganaste!)
+        if (KiboElOrigen.KiboJuego.UIAbierta)
+        {
+            x = 0;
+            z = 0;
+            return;
+        }
+
         // Captura de input (SIEMPRE en Update)
         x = Input.GetAxisRaw("Horizontal");
         z = Input.GetAxisRaw("Vertical");
 
-        Vector3 movement = new Vector3(x, 0, z).normalized;
+        Vector3 movement = Direccion();
 
         // ROTACIÓN SUAVE
         if (movement.magnitude > 0.1f)
@@ -73,9 +85,24 @@ public class PlayerMovement : MonoBehaviour
         }
     }
 
+    // Dirección del movimiento en el mundo según la cámara
+    Vector3 Direccion()
+    {
+        Vector3 m = new Vector3(x, 0, z);
+        Camera cam = Camera.main;
+        if (relativoACamara && cam != null)
+        {
+            Vector3 f = cam.transform.forward; f.y = 0;
+            Vector3 r = cam.transform.right; r.y = 0;
+            if (f.sqrMagnitude > 0.001f && r.sqrMagnitude > 0.001f)
+                m = f.normalized * z + r.normalized * x;
+        }
+        return m.sqrMagnitude > 1f ? m.normalized : m;
+    }
+
     void FixedUpdate()
     {
-        Vector3 movement = new Vector3(x, 0, z).normalized;
+        Vector3 movement = Direccion();
 
         float currentSpeed = (movement.magnitude > 0 && Input.GetKey(KeyCode.Space))
             ? superSpeed

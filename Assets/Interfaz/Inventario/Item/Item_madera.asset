@@ -14,3 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ItemData
   nombreItem: IN_madera
   icono: {fileID: 21300000, guid: 17e684a3744cf53419205a54a4849010, type: 3}
+  nombreVisible: Pedazo de madera
+  canecaManual: 1
+  caneca: 0
+  explicacion: La madera limpia se puede aprovechar.

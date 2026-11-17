@@ -7,10 +7,10 @@ public class AnimacionesOjos : MonoBehaviour
     [Header("Imagen UI")]
     public Image imagenOjos;
 
-    [Header("Animación Dormir")]
+    [Header("AnimaciÃ³n Dormir")]
     public Sprite[] framesDormir;
 
-    [Header("Animación Despertar")]
+    [Header("AnimaciÃ³n Despertar")]
     public Sprite[] framesDespertar;
 
     [Header("Loop ZZZ")]

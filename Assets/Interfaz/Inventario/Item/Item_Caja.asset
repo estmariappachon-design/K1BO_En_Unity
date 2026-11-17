@@ -14,3 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ItemData
   nombreItem: IN_cajaTapa
   icono: {fileID: 21300000, guid: 98e8340de67a8f4459a75fb5942789ce, type: 3}
+  nombreVisible: "Caja de cart\xF3n"
+  canecaManual: 1
+  caneca: 0
+  explicacion: "El papel y el cart\xF3n limpios y secos se reciclan."

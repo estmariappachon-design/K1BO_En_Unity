@@ -89,7 +89,7 @@
 //        {
 //            animator.SetTrigger("Guardar" + herramientaActual);
 
-//            // duraci髇 de animaci髇 guardar
+//            // duraci贸n de animaci贸n guardar
 //            yield return new WaitForSeconds(1.83f);
 //        }
 
@@ -171,7 +171,7 @@ public class ToolSelector : MonoBehaviour
         {
             animator.SetTrigger("Guardar" + herramientaActual);
 
-            // esperar animaci髇 de guardar
+            // esperar animaci贸n de guardar
             yield return new WaitForSeconds(1.83f);
 
             // apagar herramienta actual
@@ -195,10 +195,10 @@ public class ToolSelector : MonoBehaviour
         if (nuevaHerramienta == 3)
             tool3.SetActive(true);
 
-        // animaci髇 sacar herramienta
+        // animaci贸n sacar herramienta
         animator.SetTrigger("Tool" + nuevaHerramienta);
 
-        // esperar animaci髇
+        // esperar animaci贸n
         yield return new WaitForSeconds(1.0f);
 
         herramientaActual = nuevaHerramienta;

@@ -14,7 +14,7 @@
 //    {
 //        if (target == null) return;
 
-//        // Solo seguir posición
+//        // Solo seguir posiciÃ³n
 //        Vector3 desiredPosition = target.position + offset;
 
 //        transform.position = Vector3.Lerp(
@@ -23,7 +23,7 @@
 //            smoothSpeed * Time.deltaTime
 //        );
 
-//        // Rotación FIJA (quieta)
+//        // RotaciÃ³n FIJA (quieta)
 //        transform.rotation = Quaternion.Euler(30f, 0f, 0f);
 //    }
 //}

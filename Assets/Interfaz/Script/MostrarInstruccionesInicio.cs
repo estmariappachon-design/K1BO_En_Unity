@@ -17,7 +17,7 @@ public class MostrarInstruccionesInicio : MonoBehaviour
         }
         else
         {
-            Debug.LogWarning("No est· asignado el Panel_Instrucciones");
+            Debug.LogWarning("No est√° asignado el Panel_Instrucciones");
         }
     }
 }

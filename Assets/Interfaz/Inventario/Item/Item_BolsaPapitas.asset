@@ -14,3 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ItemData
   nombreItem: IN_bolsaPapitas
   icono: {fileID: 21300000, guid: 5a9f7958caf797b449c842dff593023c, type: 3}
+  nombreVisible: Paquete de papitas
+  canecaManual: 1
+  caneca: 1
+  explicacion: Los empaques metalizados no se pueden reciclar.

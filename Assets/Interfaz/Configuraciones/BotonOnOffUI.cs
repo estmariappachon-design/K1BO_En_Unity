@@ -16,13 +16,13 @@ public class BotonOnOffUI : MonoBehaviour
 
         if (estaOn)
         {
-            imagenBoton.sprite = spriteOn;
-            musicaManager.ReanudarMusica(); // suena
+            if (imagenBoton != null) imagenBoton.sprite = spriteOn;
+            if (musicaManager != null) musicaManager.ReanudarMusica(); // suena
         }
         else
         {
-            imagenBoton.sprite = spriteOff;
-            musicaManager.PausarMusica(); // ara
+            if (imagenBoton != null) imagenBoton.sprite = spriteOff;
+            if (musicaManager != null) musicaManager.PausarMusica(); // para
         }
     }
 }

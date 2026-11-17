@@ -28,14 +28,33 @@ public class GameManager : MonoBehaviour
     {
         if (Instance != null && Instance != this)
         {
-            Destroy(gameObject);
-            return;
+            // Al volver a cargar MainScene (Reintentar / Men√∫ > Jugar) el GameManager viejo
+            // ten√≠a referencias a objetos que ya no existen y los botones de la escena nueva
+            // apuntan a este. Por eso el nuevo reemplaza al viejo.
+            SceneManager.sceneLoaded -= Instance.OnSceneLoaded;
+            Destroy(Instance.gameObject);
         }
 
         Instance = this;
         DontDestroyOnLoad(gameObject);
 
         SceneManager.sceneLoaded += OnSceneLoaded;
+    }
+
+    private void OnDestroy()
+    {
+        SceneManager.sceneLoaded -= OnSceneLoaded;
+        if (Instance == this) Instance = null;
+    }
+
+    // Deja todo listo para empezar de nuevo (Reintentar / Volver al men√∫)
+    public void PrepararNuevaPartida()
+    {
+        Time.timeScale = 1f;
+        vidasActuales = 3;
+        estaEnMinijuego = false;
+        ganoRompecabezas = false;
+        juegoIniciado = false;
     }
 
     public void PerderVida()
@@ -78,19 +97,17 @@ public class GameManager : MonoBehaviour
     public void IniciarJuego()
     {
         juegoIniciado = true;
-        Debug.Log("Juego iniciado: la energÌa ya puede bajar");
+        Debug.Log("Juego iniciado: la energ√≠a ya puede bajar");
     }
 
     public void PausarJuego()
     {
         juegoIniciado = false;
-        Debug.Log("Juego pausado: la energÌa no baja");
+        Debug.Log("Juego pausado: la energ√≠a no baja");
     }
 
     public void MostrarGameOver()
     {
-        Debug.Log("EntrÛ a MostrarGameOver");
-
         if (panelGameOver == null)
         {
             GameObject[] todosLosObjetos = Resources.FindObjectsOfTypeAll<GameObject>();
@@ -108,11 +125,10 @@ public class GameManager : MonoBehaviour
         if (panelGameOver != null)
         {
             panelGameOver.SetActive(true);
-            Debug.Log("Panel_GameOver activado");
         }
         else
         {
-            Debug.LogError("No encontrÛ Panel_GameOver ni siquiera inactivo");
+            Debug.LogError("No encontr√≥ Panel_GameOver ni siquiera inactivo");
         }
 
         Time.timeScale = 0f;
@@ -148,7 +164,7 @@ public class GameManager : MonoBehaviour
             }
             else
             {
-                Debug.LogError("No se encontrÛ Panel_GameOver en MainScene");
+                Debug.LogError("No se encontr√≥ Panel_GameOver en MainScene");
             }
         }
     }
@@ -189,7 +205,7 @@ public class GameManager : MonoBehaviour
         }
         else
         {
-            Debug.LogError("No est· asignado PlayerAnimations en GameManager");
+            Debug.LogError("No est√° asignado PlayerAnimations en GameManager");
         }
 
         InventarioUI inventarioUI = FindAnyObjectByType<InventarioUI>();
@@ -204,7 +220,7 @@ public class GameManager : MonoBehaviour
         }
         else
         {
-            Debug.LogError("No est· asignado InventarioFullUI en GameManager");
+            Debug.LogError("No est√° asignado InventarioFullUI en GameManager");
         }
 
         ObjetoRecolectableRespawn[] objetos =
@@ -232,6 +248,12 @@ public class GameManager : MonoBehaviour
         if (panelGameOver != null)
         {
             panelGameOver.SetActive(false);
+        }
+
+        // Reinicia el contador de residuos clasificados
+        if (KiboElOrigen.KiboJuego.Instancia != null)
+        {
+            KiboElOrigen.KiboJuego.Instancia.ReiniciarNivel();
         }
     }
 }

@@ -14,3 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ItemData
   nombreItem: IN_bolsaPlastico
   icono: {fileID: -1635218166, guid: d840a69009e98d7498f4bb0ef11e4f6e, type: 3}
+  nombreVisible: "Bolsa pl\xE1stica"
+  canecaManual: 1
+  caneca: 0
+  explicacion: "El pl\xE1stico limpio se puede reciclar."

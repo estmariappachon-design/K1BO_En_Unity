@@ -14,3 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ItemData
   nombreItem: IN_espinasPescado
   icono: {fileID: 21300000, guid: 8ea387511ce70804b908e56effea2550, type: 3}
+  nombreVisible: Espinas de pescado
+  canecaManual: 1
+  caneca: 2
+  explicacion: "Los restos de comida son org\xE1nicos."

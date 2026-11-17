@@ -1,175 +1,383 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 namespace KiboElOrigen
 {
-    // Lógica del juego: recoger residuos (E), echarlos en la caneca (E), soltarlos (Q).
+    // Lógica del nivel: cuenta los residuos, revisa la clasificación en las canecas y decide cuándo se gana.
     public class KiboJuego : MonoBehaviour
     {
         public static KiboJuego Instancia;
 
-        [Tooltip("Jugador. Si lo dejas vacío se busca el objeto con tag Player o la cámara principal.")]
+        [Header("Meta del nivel")]
+        [Tooltip("Porcentaje de residuos que hay que clasificar bien para ganar (0.5 = 50%)")]
+        [Range(0.05f, 1f)] public float porcentajeMeta = 0.5f;
+
+        [Header("Puntuación")]
+        public int puntosPorAcierto = 100;
+        public int puntosMenosPorFallo = 25;
+
+        [Header("Canecas")]
+        [Tooltip("Distancia máxima (metros) para poder usar una caneca con clic")]
+        public float distanciaCaneca = 9f;
+        [Tooltip("Si en la escena no hay canecas, se crean 3 cerca del jugador al iniciar")]
+        public bool crearCanecasSiNoHay = true;
+
+        [Tooltip("Jugador (si lo dejas vacío se busca solo)")]
         public Transform jugador;
 
-        [Tooltip("Distancia para recoger residuos y usar las canecas (metros)")]
-        public float distancia = 2.5f;
+        // ---- Estado ----
+        [HideInInspector] public int aciertos, fallos, recolectados, total, meta;
+        public bool Terminado { get; private set; }
 
-        [HideInInspector] public bool jugando;
-        [HideInInspector] public int aciertos, fallos;
+        // Se pone en true mientras hay una ventana abierta (clasificar, pausa, ganaste...)
+        public static bool UIAbierta;
 
-        Residuo cargado;
+        public static bool EntradaBloqueada
+        {
+            get
+            {
+                if (UIAbierta) return true;
+                if (Instancia != null && Instancia.Terminado) return true;
+                if (GameManager.Instance != null && GameManager.Instance.estaEnMinijuego) return true;
+                return Time.timeScale <= 0.0001f;
+            }
+        }
 
-        static readonly Color colorInfo = new Color(0.05f, 0.15f, 0.35f, 0.92f);
-        static readonly Color colorBien = new Color(0.10f, 0.55f, 0.20f, 0.95f);
-        static readonly Color colorMal = new Color(0.75f, 0.10f, 0.10f, 0.95f);
-        static readonly Color colorFin = new Color(0.80f, 0.55f, 0.05f, 0.95f);
+        public int Puntuacion { get { return Mathf.Max(0, aciertos * puntosPorAcierto - fallos * puntosMenosPorFallo); } }
 
-        void Awake() { Instancia = this; }
+        public int Estrellas
+        {
+            get
+            {
+                int intentos = aciertos + fallos;
+                float p = intentos > 0 ? aciertos / (float)intentos : 0f;
+                if (p >= 0.9f) return 3;
+                if (p >= 0.7f) return 2;
+                return 1;
+            }
+        }
+
+        readonly Dictionary<GameObject, string> idResiduo = new Dictionary<GameObject, string>();
+        readonly Dictionary<string, ItemData> itemsPorNombre = new Dictionary<string, ItemData>();
+        readonly List<string> recogidos = new List<string>();
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ReiniciarEstaticos() { UIAbierta = false; Instancia = null; }
+
+        void Awake()
+        {
+            Instancia = this;
+            UIAbierta = false;
+        }
+
+        void OnDestroy()
+        {
+            if (Instancia == this) { Instancia = null; UIAbierta = false; }
+        }
 
         void Start()
         {
-            if (KiboUI.Instancia == null) Comenzar(); // por si no hay interfaz
+            if (jugador == null) jugador = KiboUtil.Jugador();
+            ContarResiduos();
+            if (crearCanecasSiNoHay && Caneca.Todas.Count == 0) CrearCanecasRuntime();
+            if (KiboUI.Instancia == null) gameObject.AddComponent<KiboUI>();
+
+            // Cielo con nubes/estrellas y cámara nueva (por si no se usó "Crear Todo")
+            if (Object.FindAnyObjectByType<KiboCielo>() == null) gameObject.AddComponent<KiboCielo>();
+            var cam = Camera.main;
+            if (cam != null && cam.GetComponent<KiboCamara>() == null)
+            {
+                var vieja = cam.GetComponent<CrashCamera>();
+                var nueva = cam.gameObject.AddComponent<KiboCamara>();
+                nueva.objetivo = jugador;
+                if (vieja != null) vieja.enabled = false;
+            }
+
+            if (KiboGuardado.CargarAlIniciar)
+            {
+                KiboGuardado.CargarAlIniciar = false;
+                StartCoroutine(CargarDespues());
+            }
+            else
+            {
+                KiboGuardado.Borrar(); // partida nueva
+                ActualizarUI();
+            }
         }
 
-        public void Comenzar()
+        void ContarResiduos()
         {
-            jugando = true;
-            aciertos = 0;
-            fallos = 0;
-            Puntaje();
-            Mensaje("Recoge los residuos con la tecla <b>E</b> y llévalos a la caneca correcta.", colorInfo, 5f);
+            idResiduo.Clear();
+            itemsPorNombre.Clear();
+            total = 0;
+            foreach (var r in KiboUtil.Buscar<ItemRecolectable>())
+            {
+                if (r.gameObject.scene != gameObject.scene) continue;
+                idResiduo[r.gameObject] = KiboUtil.Ruta(r.transform);
+                AsegurarZonaClic(r);
+                if (r.itemData != null) itemsPorNombre[r.itemData.name] = r.itemData;
+                total++;
+            }
+            meta = Mathf.Max(1, Mathf.CeilToInt(total * porcentajeMeta));
         }
 
-        Transform Jugador()
+        // Agrega una zona de clic invisible un poco más grande que el residuo,
+        // así se recoge al primer clic aunque el objeto sea pequeño o no tenga colisionador.
+        static void AsegurarZonaClic(ItemRecolectable r)
         {
-            if (jugador) return jugador;
-            GameObject p = null;
-            try { p = GameObject.FindGameObjectWithTag("Player"); } catch { }
-            if (p) jugador = p.transform;
-            else if (Camera.main) jugador = Camera.main.transform;
-            return jugador;
+            if (r.transform.Find("KIBO_ZonaClic") != null) return;
+
+            // Tamaño del residuo en su propio espacio (funciona aunque esté desactivado, p. ej. dentro de un cofre)
+            bool hay = false;
+            Bounds local = new Bounds();
+            foreach (var mf in r.GetComponentsInChildren<MeshFilter>(true))
+            {
+                if (mf.sharedMesh == null) continue;
+                Bounds mb = mf.sharedMesh.bounds;
+                for (int k = 0; k < 8; k++)
+                {
+                    Vector3 esquina = mb.center + Vector3.Scale(mb.extents, new Vector3((k & 1) == 0 ? -1 : 1, (k & 2) == 0 ? -1 : 1, (k & 4) == 0 ? -1 : 1));
+                    Vector3 p = r.transform.InverseTransformPoint(mf.transform.TransformPoint(esquina));
+                    if (!hay) { local = new Bounds(p, Vector3.zero); hay = true; }
+                    else local.Encapsulate(p);
+                }
+            }
+            if (!hay) return;
+
+            var go = new GameObject("KIBO_ZonaClic");
+            go.layer = r.gameObject.layer;
+            try { go.tag = r.gameObject.tag; } catch { }
+            go.transform.SetParent(r.transform, false);
+            go.transform.localPosition = local.center;
+            go.transform.localRotation = Quaternion.identity;
+            go.transform.localScale = Vector3.one;
+            var box = go.AddComponent<BoxCollider>();
+            box.isTrigger = true;
+            Vector3 ls = r.transform.lossyScale;
+            float sx = Mathf.Max(0.0001f, Mathf.Abs(ls.x)), sy = Mathf.Max(0.0001f, Mathf.Abs(ls.y)), sz = Mathf.Max(0.0001f, Mathf.Abs(ls.z));
+            // un poco más grande que el objeto y mínimo 60 cm, para atinarle fácil
+            box.size = new Vector3(
+                Mathf.Max(local.size.x + 0.2f / sx, 0.6f / sx),
+                Mathf.Max(local.size.y + 0.2f / sy, 0.6f / sy),
+                Mathf.Max(local.size.z + 0.2f / sz, 0.6f / sz));
+        }
+
+        void CrearCanecasRuntime()
+        {
+            Transform j = jugador;
+            Vector3 basePos = j != null ? j.position : Vector3.zero;
+            Vector3 adelante = j != null ? j.forward : Vector3.forward;
+            adelante.y = 0;
+            if (adelante.sqrMagnitude < 0.01f) adelante = Vector3.forward;
+            adelante.Normalize();
+            Vector3 derecha = Vector3.Cross(Vector3.up, adelante);
+            var cuerpo = KiboCanecaModelo.MallaCuerpo();
+            var aro = KiboCanecaModelo.MallaBorde();
+            var padre = new GameObject("KIBO_Canecas");
+            for (int i = 0; i < 3; i++)
+            {
+                var tipo = InfoCaneca.Todas[i];
+                var go = KiboCanecaModelo.Construir(tipo, cuerpo, aro, KiboCanecaModelo.MaterialesRuntime(tipo));
+                go.transform.SetParent(padre.transform, false);
+                Vector3 p = basePos + adelante * 4f + derecha * ((i - 1) * 1.3f);
+                RaycastHit hit;
+                if (Physics.Raycast(p + Vector3.up * 5f, Vector3.down, out hit, 50f, ~0, QueryTriggerInteraction.Ignore)) p = hit.point;
+                go.transform.position = p;
+                go.transform.rotation = Quaternion.LookRotation(adelante);
+            }
         }
 
         void Update()
         {
-            if (!jugando) return;
-            Transform j = Jugador();
-            if (!j) return;
+            if (KiboUI.Instancia == null) return;
 
-            if (cargado) MoverCargado(j);
+            if (Input.GetKeyDown(KeyCode.Escape)) KiboUI.Instancia.TeclaEscape();
 
-            Residuo residuoCerca = cargado ? null : Cercano(Residuo.Todos, j.position, true);
-            Caneca canecaCerca = Cercano(Caneca.Todas, j.position, false);
+            if (EntradaBloqueada) return;
 
-            if (cargado)
+            if (Input.GetMouseButtonDown(0) && !KiboUtil.PunteroSobreUI())
             {
-                if (canecaCerca)
-                    Ayuda("<b>E</b>: echar " + cargado.NombreMostrar + " en la caneca " + InfoCaneca.Pintado(canecaCerca.tipo) + "     <b>Q</b>: soltar");
-                else
-                    Ayuda("Llevas: <b>" + cargado.NombreMostrar + "</b>  ·  acércate a una caneca     <b>Q</b>: soltar");
+                Caneca c = CanecaBajoMouse();
+                if (c != null) UsarCaneca(c);
             }
-            else if (residuoCerca) Ayuda("<b>E</b>: recoger " + residuoCerca.NombreMostrar);
-            else Ayuda("");
-
-            if (KiboEntrada.Interactuar())
-            {
-                if (cargado)
-                {
-                    if (canecaCerca) Depositar(cargado, canecaCerca);
-                    else Mensaje("Acércate a una caneca para echar el residuo.", colorInfo, 2f);
-                }
-                else if (residuoCerca) Recoger(residuoCerca);
-            }
-            else if (KiboEntrada.Soltar() && cargado) Soltar(j);
         }
 
-        T Cercano<T>(List<T> lista, Vector3 p, bool soloLibres) where T : Component
+        static bool SobreUI()
         {
-            T mejor = null;
-            float md = distancia;
-            for (int i = 0; i < lista.Count; i++)
+            return EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
+        }
+
+        Caneca CanecaBajoMouse()
+        {
+            var cam = Camera.main;
+            if (cam == null) return null;
+            Ray ray = cam.ScreenPointToRay(Input.mousePosition);
+            var hits = Physics.RaycastAll(ray, 200f, ~0, QueryTriggerInteraction.Collide);
+            System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+            foreach (var h in hits)
             {
-                T x = lista[i];
-                if (!x) continue;
-                if (soloLibres)
-                {
-                    var r = x as Residuo;
-                    if (r != null && r.recogido) continue;
-                }
-                Vector3 a = p, b = x.transform.position;
+                var c = h.collider.GetComponentInParent<Caneca>();
+                if (c != null) return c;
+                // si el primer objeto es otro objeto sólido grande (pared, árbol) no se atraviesa
+                if (!h.collider.isTrigger && h.collider.GetComponentInParent<PlayerMovement>() == null && h.distance > 0.5f
+                    && h.collider.bounds.size.magnitude > 6f) return null;
+            }
+            return null;
+        }
+
+        public void UsarCaneca(Caneca c)
+        {
+            if (jugador == null) jugador = KiboUtil.Jugador();
+            if (jugador != null)
+            {
+                Vector3 a = jugador.position, b = c.transform.position;
                 a.y = 0; b.y = 0;
-                float d = Vector3.Distance(a, b);
-                if (d < md) { md = d; mejor = x; }
+                if (Vector3.Distance(a, b) > distanciaCaneca)
+                {
+                    KiboUI.Instancia.Aviso("¡Acércate más a la caneca para usarla!", c.tipo);
+                    KiboSonidos.Aviso();
+                    return;
+                }
             }
-            return mejor;
+            KiboUI.Instancia.AbrirClasificacion(c);
         }
 
-        void Recoger(Residuo r)
+        // ------------------------------------------------------------------
+        //  Llamado por PlayerPickUp cuando un residuo entra al inventario
+        // ------------------------------------------------------------------
+        public void AlRecoger(ItemData item, GameObject objeto)
         {
-            cargado = r;
-            r.recogido = true;
-            r.Fisica(false);
-            Mensaje("Recogiste: <b>" + r.NombreMostrar + "</b>\nEste residuo va en la caneca de color " + InfoCaneca.Pintado(r.tipo),
-                colorInfo, 4f);
-        }
-
-        void MoverCargado(Transform j)
-        {
-            Vector3 destino;
-            Camera cam = Camera.main;
-            bool primeraPersona = cam && (cam.transform == j || Vector3.Distance(cam.transform.position, j.position) < 1.5f);
-            if (primeraPersona)
+            recolectados++;
+            string id;
+            if (objeto != null && idResiduo.TryGetValue(objeto, out id) && !recogidos.Contains(id)) recogidos.Add(id);
+            if (item != null && !itemsPorNombre.ContainsKey(item.name)) itemsPorNombre[item.name] = item;
+            KiboSonidos.Recoger();
+            if (KiboUI.Instancia != null)
             {
-                Transform m = cam.transform;
-                destino = m.position + m.forward * 1.0f + m.right * 0.35f - m.up * 0.35f;
+                KiboUI.Instancia.MostrarRecogido(item);
+                KiboUI.Instancia.ActualizarHUD();
             }
-            else
-            {
-                destino = j.position + j.forward * 0.7f + Vector3.up * 1.2f;
-            }
-            Transform t = cargado.transform;
-            t.position = Vector3.Lerp(t.position, destino, 1f - Mathf.Exp(-20f * Time.deltaTime));
         }
 
-        void Soltar(Transform j)
+        public void AlInventarioLleno()
         {
-            Residuo r = cargado;
-            cargado = null;
-            r.recogido = false;
-            r.Fisica(true);
-            r.Lanzar(j.forward * 1.5f);
+            KiboSonidos.Aviso();
+            if (KiboUI.Instancia != null)
+                KiboUI.Instancia.Aviso("¡Tu barra está llena! Lleva los residuos a las canecas o guárdalos en la maleta.", TipoCaneca.Blanca);
         }
 
-        public void Depositar(Residuo r, Caneca c)
+        // Devuelve true si el residuo va en esa caneca
+        public bool Clasificar(ItemData item, TipoCaneca caneca)
         {
-            if (r.tipo == c.tipo)
+            bool bien = KiboClasificador.Tipo(item) == caneca;
+            if (bien) { aciertos++; KiboSonidos.Bien(); }
+            else { fallos++; KiboSonidos.Mal(); }
+            if (!Terminado && aciertos >= meta)
             {
-                aciertos++;
-                if (r == cargado) cargado = null;
-                Mensaje("<size=48><b>¡BIEN!</b></size>\n" + r.NombreMostrar + " va en la caneca " + InfoCaneca.Pintado(c.tipo), colorBien, 3f);
-                StartCoroutine(c.Tragar(r));
-                if (Residuo.Todos.Count == 0) StartCoroutine(Felicitar());
+                Terminado = true;
+                KiboGuardado.Borrar();
+                int p = Puntuacion;
+                if (p > KiboGuardado.MejorPuntaje) KiboGuardado.MejorPuntaje = p;
             }
-            else
-            {
-                fallos++;
-                Mensaje("<size=48><b>¡FALLASTE!</b></size>\n" + r.NombreMostrar + " no va en la caneca " + InfoCaneca.Pintado(c.tipo) +
-                        ". Va en la " + InfoCaneca.Pintado(r.tipo), colorMal, 3.5f);
-                if (r != cargado) c.Expulsar(r);
-            }
-            Puntaje();
+            if (KiboUI.Instancia != null) KiboUI.Instancia.ActualizarHUD();
+            return bien;
         }
 
-        IEnumerator Felicitar()
+        // Llamado por GameManager.ReiniciarJugador (Game Over > Reiniciar)
+        public void ReiniciarNivel()
         {
-            yield return new WaitForSecondsRealtime(3.2f);
-            Mensaje("<size=48><b>¡FELICIDADES!</b></size>\nClasificaste todos los residuos.  Bien: " + aciertos + "   Fallos: " + fallos,
-                colorFin, 7f);
+            aciertos = fallos = recolectados = 0;
+            Terminado = false;
+            recogidos.Clear();
+            ActualizarUI();
         }
 
-        void Mensaje(string t, Color c, float s) { if (KiboUI.Instancia) KiboUI.Instancia.Mensaje(t, c, s); }
-        void Ayuda(string t) { if (KiboUI.Instancia) KiboUI.Instancia.Ayuda(t); }
-        void Puntaje() { if (KiboUI.Instancia) KiboUI.Instancia.Puntaje(aciertos, fallos); }
+        void ActualizarUI()
+        {
+            if (KiboUI.Instancia != null) KiboUI.Instancia.ActualizarHUD();
+        }
+
+        // ------------------------------------------------------------------
+        //  Guardar / Cargar partida
+        // ------------------------------------------------------------------
+        public void Guardar()
+        {
+            var d = new DatosPartida
+            {
+                aciertos = aciertos,
+                fallos = fallos,
+                recolectados = recolectados,
+                ocultos = new List<string>(recogidos)
+            };
+            var inv = Object.FindAnyObjectByType<InventarioUI>();
+            if (inv != null && inv.slotsBarra != null)
+                foreach (var s in inv.slotsBarra)
+                    if (s != null && !s.EstaVacio()) d.barra.Add(s.itemActual.name);
+            var full = KiboUtil.BuscarUno<InventarioFullUI>();
+            if (full != null && full.slotsFull != null)
+                foreach (var s in full.slotsFull)
+                    if (s != null && !s.EstaVacio()) { d.mochila.Add(s.Item.name); d.mochilaCantidad.Add(s.Cantidad); }
+            if (jugador == null) jugador = KiboUtil.Jugador();
+            if (jugador != null)
+            {
+                d.tienePosicion = true;
+                d.jugadorX = jugador.position.x; d.jugadorY = jugador.position.y; d.jugadorZ = jugador.position.z;
+            }
+            KiboGuardado.Guardar(d);
+            if (KiboUI.Instancia != null) KiboUI.Instancia.Aviso("¡Partida guardada!", TipoCaneca.Verde);
+            KiboSonidos.Bien();
+        }
+
+        IEnumerator CargarDespues()
+        {
+            yield return null; // deja que los demás scripts terminen su Start
+            var d = KiboGuardado.Leer();
+            if (d == null) { ActualizarUI(); yield break; }
+
+            aciertos = d.aciertos;
+            fallos = d.fallos;
+            recolectados = d.recolectados;
+            recogidos.Clear();
+
+            var porId = new Dictionary<string, GameObject>();
+            foreach (var kv in idResiduo) if (kv.Key != null) porId[kv.Value] = kv.Key;
+            foreach (var id in d.ocultos)
+            {
+                GameObject go;
+                if (porId.TryGetValue(id, out go) && go != null)
+                {
+                    go.SetActive(false);
+                    recogidos.Add(id);
+                }
+            }
+
+            var inv = Object.FindAnyObjectByType<InventarioUI>();
+            if (inv != null) foreach (var n in d.barra) { ItemData it; if (itemsPorNombre.TryGetValue(n, out it)) inv.AgregarItem(it); }
+            var full = KiboUtil.BuscarUno<InventarioFullUI>();
+            if (full != null)
+                for (int i = 0; i < d.mochila.Count; i++)
+                {
+                    ItemData it;
+                    if (!itemsPorNombre.TryGetValue(d.mochila[i], out it)) continue;
+                    int cant = i < d.mochilaCantidad.Count ? d.mochilaCantidad[i] : 1;
+                    for (int k = 0; k < cant; k++) full.AgregarItem(it);
+                }
+
+            if (d.tienePosicion)
+            {
+                if (jugador == null) jugador = KiboUtil.Jugador();
+                if (jugador != null)
+                {
+                    var p = new Vector3(d.jugadorX, d.jugadorY, d.jugadorZ);
+                    var rb = jugador.GetComponent<Rigidbody>();
+                    if (rb != null) rb.position = p;
+                    jugador.position = p;
+                }
+            }
+            ActualizarUI();
+            if (KiboUI.Instancia != null) KiboUI.Instancia.Aviso("¡Partida cargada! Sigue clasificando residuos.", TipoCaneca.Verde);
+        }
     }
 }

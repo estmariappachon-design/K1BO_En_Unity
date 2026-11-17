@@ -10,6 +10,22 @@ public class SlotInventarioFull : MonoBehaviour
     private ItemData itemActual;
     private int cantidad = 0;
 
+    public ItemData Item { get { return itemActual; } }
+    public int Cantidad { get { return cantidad; } }
+
+    // Saca un residuo de esta casilla (se usa al echarlo en una caneca)
+    public void QuitarUno()
+    {
+        if (itemActual == null) return;
+        cantidad--;
+        if (cantidad <= 0)
+        {
+            VaciarSlot();
+            return;
+        }
+        if (textoCantidad != null) textoCantidad.text = cantidad.ToString();
+    }
+
     public bool EstaVacio()
     {
         return itemActual == null;
@@ -25,11 +41,17 @@ public class SlotInventarioFull : MonoBehaviour
         itemActual = item;
         cantidad++;
 
-        iconoItem.sprite = item.icono;
-        iconoItem.color = Color.white;
+        if (iconoItem != null)
+        {
+            iconoItem.sprite = item.icono;
+            iconoItem.color = Color.white;
+        }
 
-        textoCantidad.text = cantidad.ToString();
-        textoCantidad.gameObject.SetActive(true);
+        if (textoCantidad != null)
+        {
+            textoCantidad.text = cantidad.ToString();
+            textoCantidad.gameObject.SetActive(true);
+        }
     }
 
     public void VaciarSlot()
@@ -37,11 +59,17 @@ public class SlotInventarioFull : MonoBehaviour
         itemActual = null;
         cantidad = 0;
 
-        iconoItem.sprite = null;
-        iconoItem.color = new Color(1, 1, 1, 0);
+        if (iconoItem != null)
+        {
+            iconoItem.sprite = null;
+            iconoItem.color = new Color(1, 1, 1, 0);
+        }
 
-        textoCantidad.text = "";
-        textoCantidad.gameObject.SetActive(false);
+        if (textoCantidad != null)
+        {
+            textoCantidad.text = "";
+            textoCantidad.gameObject.SetActive(false);
+        }
     }
 }
 
