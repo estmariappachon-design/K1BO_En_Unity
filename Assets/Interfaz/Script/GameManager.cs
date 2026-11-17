@@ -108,6 +108,10 @@ public class GameManager : MonoBehaviour
 
     public void MostrarGameOver()
     {
+        // Melodía de perdiste
+        KiboElOrigen.KiboMusica.Detener();
+        KiboElOrigen.KiboMusica.Stinger("musica_perdiste");
+
         if (panelGameOver == null)
         {
             GameObject[] todosLosObjetos = Resources.FindObjectsOfTypeAll<GameObject>();

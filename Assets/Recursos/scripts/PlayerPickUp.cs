@@ -167,6 +167,27 @@ public class PlayerPickUp : MonoBehaviour
         return null;
     }
 
+    // Lo usan los cofres: el residuo se recoge solo (sin importar la distancia).
+    // Devuelve false si la barra está llena.
+    public bool RecogerAutomatico(GameObject obj)
+    {
+        if (obj == null) return false;
+        if (inventarioUI == null) inventarioUI = Object.FindAnyObjectByType<InventarioUI>();
+        if (inventarioUI != null && !inventarioUI.TieneEspacio())
+        {
+            if (KiboJuego.Instancia != null) KiboJuego.Instancia.AlInventarioLleno();
+            return false;
+        }
+        StartCoroutine(EsperarYRecoger(obj));
+        return true;
+    }
+
+    IEnumerator EsperarYRecoger(GameObject obj)
+    {
+        while (recogiendo) yield return null;
+        if (obj != null && obj.activeInHierarchy) yield return Teletransportar(obj);
+    }
+
     IEnumerator Teletransportar(GameObject obj)
     {
         recogiendo = true;

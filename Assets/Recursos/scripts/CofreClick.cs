@@ -13,8 +13,13 @@ public class CofreClick : MonoBehaviour
     public GameObject tarjeta;
     public Transform camaraJugador;
 
+    public bool EstaAbierto { get { return abierto; } }
+
     void Start()
     {
+        // brillo suave y efecto al pasar el mouse
+        if (GetComponent<KiboElOrigen.KiboBrilloCofre>() == null) gameObject.AddComponent<KiboElOrigen.KiboBrilloCofre>();
+
         anim = GetComponent<Animator>();
 
         rotacionInicial = transform.rotation;
@@ -52,12 +57,16 @@ public class CofreClick : MonoBehaviour
     }
 
     [Header("Tarjeta del minijuego")]
+    [Tooltip("Qué minijuego da este cofre. Alternar = una vez el rompecabezas y otra el del TransMilenio")]
+    public TipoMinijuego minijuego = TipoMinijuego.Alternar;
     [Tooltip("Distancia de la tarjeta frente a la cámara")]
     public float distanciaTarjeta = 2f;
-    [Tooltip("Altura de la tarjeta respecto al centro de la pantalla")]
+    [Tooltip("(Ya no se usa: la tarjeta sale centrada)")]
     public float alturaTarjeta = 0f;
-    [Tooltip("Sube la tarjeta en la pantalla (más alto = más arriba)")]
-    public float subirTarjeta = 0.5f;
+    [Tooltip("(Ya no se usa: la tarjeta sale centrada)")]
+    public float subirTarjeta = 0f;
+
+    static int contadorAlternar;
 
     Transform CamaraActual()
     {
@@ -69,59 +78,27 @@ public class CofreClick : MonoBehaviour
     void MostrarTarjeta()
     {
         if (tarjeta == null || CamaraActual() == null) return;
-        tarjeta.SetActive(true);
 
-        StopAllCoroutines();
-        StartCoroutine(AnimarTarjeta());
-    }
-
-    Vector3 PosicionFrente(Transform cam)
-    {
-        return cam.position + cam.forward * distanciaTarjeta + cam.up * (alturaTarjeta + subirTarjeta);
-    }
-
-    Quaternion RotacionFrente(Transform cam)
-    {
-        // mirando a la cámara (igual que antes)
-        return Quaternion.LookRotation(cam.forward, cam.up) * Quaternion.Euler(0, 180, 0);
-    }
-
-    IEnumerator AnimarTarjeta()
-    {
-        Transform cam = CamaraActual();
-        Quaternion giroInicial = Quaternion.Euler(0f, 540f, 0f);
-
-        float tiempo = 0f;
-        float duracion = 1f;
-
-        // Aparece girando y creciendo, SIEMPRE frente a la cámara
-        while (tiempo < duracion && tarjeta.activeInHierarchy)
+        // Elige el minijuego de este cofre
+        TipoMinijuego elegido = minijuego;
+        if (elegido == TipoMinijuego.Alternar)
         {
-            tiempo += Time.deltaTime;
-            float t = Mathf.Clamp01(tiempo / duracion);
-            float suave = 1f - Mathf.Pow(1f - t, 3f);
-
-            cam = CamaraActual();
-            Quaternion final = RotacionFrente(cam);
-            tarjeta.transform.rotation = Quaternion.Slerp(final * giroInicial, final, suave);
-            tarjeta.transform.position = PosicionFrente(cam) + cam.up * (Mathf.Sin(t * Mathf.PI) * 0.12f);
-            float escala = Mathf.Lerp(0.2f, 1f, suave);
-            tarjeta.transform.localScale = new Vector3(escala, escala, escala);
-
-            yield return null;
+            elegido = contadorAlternar % 2 == 0 ? TipoMinijuego.Transmilenio : TipoMinijuego.Rompecabezas;
+            contadorAlternar++;
         }
+        AbrirMinijuego.Siguiente = elegido;
 
-        tarjeta.transform.localScale = Vector3.one;
+        // La tarjeta 3D ya no se usa (se movía y empujaba al personaje).
+        // Ahora sale una tarjeta 2D centrada en la pantalla con el botón JUGAR.
+        tarjeta.SetActive(false);
+        var abrir = tarjeta.GetComponent<AbrirMinijuego>();
+        if (abrir == null) abrir = tarjeta.GetComponentInChildren<AbrirMinijuego>(true);
+        GameObject blur = abrir != null ? abrir.panelBlur : null;
 
-        // Se queda frente a la cámara aunque la cámara se mueva, hasta que se haga clic en ella
-        while (tarjeta.activeInHierarchy)
-        {
-            cam = CamaraActual();
-            float flota = Mathf.Sin(Time.time * 2f) * 0.03f;
-            tarjeta.transform.position = Vector3.Lerp(tarjeta.transform.position, PosicionFrente(cam) + cam.up * flota, 12f * Time.deltaTime);
-            tarjeta.transform.rotation = Quaternion.Slerp(tarjeta.transform.rotation, RotacionFrente(cam), 12f * Time.deltaTime);
-            yield return null;
-        }
+        if (KiboElOrigen.KiboUI.Instancia != null)
+            KiboElOrigen.KiboUI.Instancia.MostrarTarjetaMinijuego(elegido, () => AbrirMinijuego.Abrir(elegido, blur), ReiniciarCofre);
+        else
+            AbrirMinijuego.Abrir(elegido, blur);
     }
 
     public void ReiniciarCofre()

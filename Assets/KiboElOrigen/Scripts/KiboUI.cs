@@ -43,7 +43,7 @@ namespace KiboElOrigen
         Coroutine rutinaAviso;
 
         // Ventanas
-        GameObject capaClasificar, capaPausa, capaGanaste, capaAjustes, capaVideo;
+        GameObject capaClasificar, capaPausa, capaGanaste, capaAjustes, capaVideo, capaTarjeta;
         float escalaPrevia = 1f;
         CursorLockMode cursorPrevio;
         bool cursorVisiblePrevio = true;
@@ -263,6 +263,107 @@ namespace KiboElOrigen
         }
 
         // =====================================================================
+        //  ANUNCIO "CLICK PARA JUGAR EL MINIJUEGO"
+        // =====================================================================
+        GameObject anuncio;
+
+        public void MostrarAnuncioMinijuego(string texto, UnityAction alClic)
+        {
+            OcultarAnuncioMinijuego();
+            var root = KiboEstilo.Rect("AnuncioMinijuego", raiz, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0, 150), new Vector2(820, 150));
+            var brillo = KiboEstilo.Centro("Brillo", root, Vector2.zero, new Vector2(1100, 360));
+            KiboEstilo.Imagen(brillo, "brillo", new Color(1f, 0.92f, 0.5f, 0.6f)).preserveAspect = false;
+            var pulso = brillo.gameObject.AddComponent<KiboPulso>();
+            pulso.cantidad = 0.08f;
+            pulso.velocidad = 5f;
+            KiboEstilo.Boton(root, "Boton", texto, Vector2.zero, new Vector2(820, 150), () =>
+            {
+                OcultarAnuncioMinijuego();
+                if (alClic != null) alClic();
+            }, 54);
+            anuncio = root.gameObject;
+            if (CapaArrastre != null) CapaArrastre.SetAsLastSibling();
+        }
+
+        public void OcultarAnuncioMinijuego()
+        {
+            if (anuncio != null) Destroy(anuncio);
+            anuncio = null;
+        }
+
+        // =====================================================================
+        //  TARJETA 2D DEL MINIJUEGO (sale al abrir un cofre de minijuego)
+        // =====================================================================
+        UnityAction accionAhoraNo;
+
+        public void MostrarTarjetaMinijuego(TipoMinijuego tipo, UnityAction alJugar, UnityAction alAhoraNo)
+        {
+            if (capaTarjeta != null) return;
+            accionAhoraNo = alAhoraNo;
+            AbrirVentana();
+            grupoRaiz.alpha = 1f;
+
+            var capa = KiboEstilo.Lleno("KIBO_TarjetaMinijuego", raiz);
+            capaTarjeta = capa.gameObject;
+            KiboEstilo.Oscurecer(capa, 0.65f);
+
+            var arriba = KiboEstilo.Centro("Titulo", capa, new Vector2(0, 400), new Vector2(1100, 90));
+            KiboEstilo.Texto(arriba, "¡ENCONTRASTE UN MINIJUEGO!", 66, KiboEstilo.Dorado, TextAnchor.MiddleCenter);
+
+            var brillo = KiboEstilo.Centro("Brillo", capa, new Vector2(0, 50), new Vector2(760, 760));
+            KiboEstilo.Imagen(brillo, "brillo", new Color(1f, 0.93f, 0.55f, 0.7f));
+            brillo.gameObject.AddComponent<KiboPulso>().cantidad = 0.07f;
+
+            var carta = KiboEstilo.Centro("Carta", capa, new Vector2(0, 50), new Vector2(420, 500));
+            KiboEstilo.Imagen(carta, tipo == TipoMinijuego.Transmilenio ? "carta_transmilenio" : "carta_rompecabezas", Color.white);
+
+            KiboEstilo.Boton(capa, "Btn_Jugar", "¡JUGAR!", new Vector2(0, -280), new Vector2(380, 105), () =>
+            {
+                CerrarTarjeta();
+                if (alJugar != null) alJugar();
+            }, 56);
+            KiboEstilo.Boton(capa, "Btn_AhoraNo", "AHORA NO", new Vector2(0, -385), new Vector2(260, 72), () =>
+            {
+                CerrarTarjeta();
+                if (alAhoraNo != null) alAhoraNo();
+                Aviso("Puedes volver a abrir el cofre cuando quieras.", TipoCaneca.Verde);
+            }, 34);
+
+            KiboSonidos.Ganar();
+            StartCoroutine(AnimarCarta(carta));
+        }
+
+        IEnumerator AnimarCarta(RectTransform carta)
+        {
+            // gira como una carta que se voltea y crece
+            for (float t = 0; t < 0.6f; t += Time.unscaledDeltaTime)
+            {
+                if (carta == null) yield break;
+                float k = t / 0.6f;
+                float s = k + Mathf.Sin(k * Mathf.PI) * 0.25f;
+                carta.localScale = new Vector3(Mathf.Abs(Mathf.Cos((1f - k) * Mathf.PI * 2f)) * s, s, 1f);
+                yield return null;
+            }
+            if (carta == null) yield break;
+            carta.localScale = Vector3.one;
+            // flota suavemente
+            while (carta != null)
+            {
+                carta.anchoredPosition = new Vector2(0, 50 + Mathf.Sin(Time.unscaledTime * 2f) * 8f);
+                carta.localRotation = Quaternion.Euler(0, 0, Mathf.Sin(Time.unscaledTime * 1.5f) * 2f);
+                yield return null;
+            }
+        }
+
+        void CerrarTarjeta()
+        {
+            if (capaTarjeta == null) return;
+            Destroy(capaTarjeta);
+            capaTarjeta = null;
+            CerrarVentanaSiNoHayOtra();
+        }
+
+        // =====================================================================
         //  ÍCONO QUE VUELA A LA BARRA DE INVENTARIO
         // =====================================================================
         public void VolarAlInventario(Sprite icono, Vector3 posMundo, System.Action alLlegar)
@@ -343,7 +444,7 @@ namespace KiboElOrigen
         // =====================================================================
         bool HayVentana()
         {
-            return capaClasificar != null || capaPausa != null || capaGanaste != null || capaAjustes != null || capaVideo != null;
+            return capaClasificar != null || capaPausa != null || capaGanaste != null || capaAjustes != null || capaVideo != null || capaTarjeta != null;
         }
 
         void AbrirVentana()
@@ -375,6 +476,7 @@ namespace KiboElOrigen
         {
             if (capaAjustes != null) { CerrarAjustes(); return; }
             if (capaVideo != null) { TerminarVideo(); return; }
+            if (capaTarjeta != null) { CerrarTarjeta(); if (accionAhoraNo != null) accionAhoraNo(); return; }
             if (capaClasificar != null) { CerrarClasificacion(); return; }
             if (capaPausa != null) { CerrarPausa(); return; }
             if (capaGanaste != null) return;
@@ -392,6 +494,7 @@ namespace KiboElOrigen
             canecaActual = caneca;
             verMaleta = false;
             AbrirVentana();
+            KiboMusica.Poner("musica_clasificar");
 
             var capa = KiboEstilo.Lleno("KIBO_Clasificar", raiz);
             capaClasificar = capa.gameObject;
@@ -457,6 +560,7 @@ namespace KiboElOrigen
             fb.gameObject.SetActive(false);
 
             LlenarBandeja();
+            CapaArrastre.SetAsLastSibling();
             StartCoroutine(Aparecer(panel));
         }
 
@@ -477,6 +581,7 @@ namespace KiboElOrigen
             if (capaClasificar == null) return;
             Destroy(capaClasificar);
             capaClasificar = null;
+            KiboMusica.Volver();
             objetivos.Clear();
             txStats = null;
             foreach (Transform h in CapaArrastre) Destroy(h.gameObject);
@@ -711,7 +816,8 @@ namespace KiboElOrigen
             var j = KiboJuego.Instancia;
             if (j == null) return;
             AbrirVentana();
-            KiboSonidos.Ganar();
+            KiboMusica.Detener();
+            KiboMusica.Stinger("musica_ganaste", "musica_menu");
 
             var capa = KiboEstilo.Lleno("KIBO_Ganaste", raiz);
             capaGanaste = capa.gameObject;

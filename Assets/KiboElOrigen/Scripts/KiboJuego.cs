@@ -83,6 +83,7 @@ namespace KiboElOrigen
             ContarResiduos();
             if (crearCanecasSiNoHay && Caneca.Todas.Count == 0) CrearCanecasRuntime();
             if (KiboUI.Instancia == null) gameObject.AddComponent<KiboUI>();
+            KiboMusica.Volver(); // en el nivel suena la música ambiente
 
             // Cielo con nubes/estrellas y cámara nueva (por si no se usó "Crear Todo")
             if (Object.FindAnyObjectByType<KiboCielo>() == null) gameObject.AddComponent<KiboCielo>();
@@ -112,6 +113,22 @@ namespace KiboElOrigen
             idResiduo.Clear();
             itemsPorNombre.Clear();
             total = 0;
+            // Algunos residuos estaban DENTRO de otro residuo (p. ej. varias cáscaras de banano
+            // colgando de la primera). Al recoger la primera se iban todas y el clic fallaba.
+            // Se separan para que cada uno se recoja por su cuenta.
+            foreach (var r in KiboUtil.Buscar<ItemRecolectable>())
+            {
+                if (r.gameObject.scene != gameObject.scene || r.transform.parent == null) continue;
+                var padreResiduo = r.transform.parent.GetComponentInParent<ItemRecolectable>(true);
+                if (padreResiduo == null) continue;
+                Transform nuevoPadre = padreResiduo.transform.parent;
+                while (nuevoPadre != null && nuevoPadre.GetComponentInParent<ItemRecolectable>(true) != null)
+                    nuevoPadre = nuevoPadre.parent;
+                r.transform.SetParent(nuevoPadre, true);
+                var resp = r.GetComponent<ObjetoRecolectableRespawn>();
+                if (resp != null) resp.FijarPadreInicial(nuevoPadre);
+            }
+
             foreach (var r in KiboUtil.Buscar<ItemRecolectable>())
             {
                 if (r.gameObject.scene != gameObject.scene) continue;

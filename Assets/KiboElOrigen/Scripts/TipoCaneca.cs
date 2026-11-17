@@ -85,7 +85,7 @@ namespace KiboElOrigen
     // Si en el ItemData marcas "Caneca Manual", se usa lo que elegiste ahí.
     public static class KiboClasificador
     {
-        static readonly string[] clavesNegra = { "papitas", "paquete", "pizza", "vaso", "servilleta", "higienico", "icopor", "tapabocas", "colilla", "chicle", "panal", "jeringa", "encendedor", "sucio" };
+        static readonly string[] clavesNegra = { "papitas", "paquete", "bolsa", "pizza", "vaso", "servilleta", "higienico", "icopor", "tapabocas", "colilla", "chicle", "panal", "jeringa", "encendedor", "sucio" };
         static readonly string[] clavesVerde = { "cascara", "banano", "pescado", "espina", "manzana", "comida", "fruta", "organic", "hueso", "cafe", "verdura" };
 
         public static TipoCaneca Tipo(ItemData item)
@@ -151,6 +151,7 @@ namespace KiboElOrigen
             if (n.Contains("vaso")) return "Los vasos desechables usados están sucios y mezclan materiales.";
             if (n.Contains("cascara") || n.Contains("banano")) return "Las cáscaras son orgánicas: ¡se convierten en abono!";
             if (n.Contains("pescado") || n.Contains("espina")) return "Los restos de comida son orgánicos.";
+            if (n.Contains("bolsa")) return "Las bolsas plásticas casi siempre están sucias o mezcladas, por eso van a la caneca negra.";
             if (n.Contains("vidrio")) return "El vidrio se puede reciclar muchas veces.";
             if (n.Contains("botella") || n.Contains("bolsa")) return "El plástico limpio se puede reciclar.";
             if (n.Contains("papel") || n.Contains("caja") || n.Contains("cereal")) return "El papel y el cartón limpios y secos se reciclan.";

@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using UnityEngine.SceneManagement;
 using System.Collections.Generic;
 using TMPro;
@@ -108,6 +108,7 @@ public class RompecabezasManager : MonoBehaviour
         }
 
         Debug.Log("¡Ganaste el rompecabezas!");
+        KiboElOrigen.KiboMusica.Stinger("musica_ganaste");
 
         // 🔥 Avisar al GameManager
         if (GameManager.Instance != null)
@@ -176,6 +177,8 @@ public class RompecabezasManager : MonoBehaviour
             Debug.LogError("No existe GameManager.Instance");
         }
 
+        KiboElOrigen.KiboMusica.Detener();
+        KiboElOrigen.KiboMusica.Stinger("musica_perdiste");
         panelTiempoAgotado.SetActive(true);
         textoAnuncio.text = "¡Perdiste!";
 

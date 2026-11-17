@@ -55,6 +55,9 @@ public class MainMenuManager : MonoBehaviour
 
         if (crearBotonesExtra) PrepararMenu();
 
+        // Música del menú
+        KiboMusica.Poner("musica_menu");
+
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
     }
@@ -97,6 +100,7 @@ public class MainMenuManager : MonoBehaviour
 
         if (menuUI != null) menuUI.SetActive(false);
         if (panelAjustes != null) CerrarAjustes();
+        KiboMusica.Detener(); // el video tiene su propio sonido
 
         videoPlayer.loopPointReached -= EndVideo;
         videoPlayer.loopPointReached += EndVideo;
@@ -159,6 +163,7 @@ public class MainMenuManager : MonoBehaviour
         if (cargando) return;
         cargando = true;
         ReproduciendoVideo = false;
+        KiboMusica.Detener();
         if (botonOmitir != null) botonOmitir.interactable = false;
         KiboTransicion.Cargar(escenaJuego);
     }

@@ -37,6 +37,8 @@ namespace KiboElOrigen
             padreOriginal = transform.parent;
             hermano = transform.GetSiblingIndex();
             posOriginal = rt.anchoredPosition;
+            // La capa de arrastre siempre encima de las ventanas, para que se vea el residuo
+            KiboUI.Instancia.CapaArrastre.SetAsLastSibling();
             transform.SetParent(KiboUI.Instancia.CapaArrastre, true);
             transform.SetAsLastSibling();
             grupo.blocksRaycasts = false;

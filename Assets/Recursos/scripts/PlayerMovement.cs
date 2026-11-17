@@ -19,7 +19,20 @@ public class PlayerMovement : MonoBehaviour
     [Tooltip("W camina hacia donde mira la cámara (útil al girar la cámara o en primera persona)")]
     public bool relativoACamara = true;
 
+    [Header("Suelo (movimiento suave en cualquier terreno)")]
+    [Tooltip("Mantiene al personaje pegado al suelo: sube y baja lomas y escalones sin trabarse")]
+    public bool pegarAlSuelo = true;
+    [Tooltip("Altura máxima de escalón/borde que puede subir caminando (metros)")]
+    public float pasoMaximo = 0.5f;
+    [Tooltip("Fuerza con la que cae si no hay suelo debajo")]
+    public float gravedad = 20f;
+
     private Rigidbody rb;
+    private Collider col;
+    private float alturaPies;     // distancia del pivote a la planta de los pies
+    private float velocidadY;
+    private Quaternion rotacionObjetivo;
+    private bool girar;
 
     // INPUT
     private float x;
@@ -35,12 +48,31 @@ public class PlayerMovement : MonoBehaviour
 
         // SUAVIDAD VISUAL 🔥
         rb.interpolation = RigidbodyInterpolation.Interpolate;
+        rb.collisionDetectionMode = CollisionDetectionMode.ContinuousSpeculative;
+        rotacionObjetivo = rb.rotation;
+
+        // Sin fricción: ya no se queda pegado al rozar paredes, árboles o bordes
+        var sinFriccion = new PhysicsMaterial("Kibo_SinFriccion")
+        {
+            dynamicFriction = 0f,
+            staticFriction = 0f,
+            frictionCombine = PhysicsMaterialCombine.Minimum,
+            bounciness = 0f,
+            bounceCombine = PhysicsMaterialCombine.Minimum
+        };
+        foreach (var c in GetComponentsInChildren<Collider>())
+        {
+            if (c.isTrigger) continue;
+            c.sharedMaterial = sinFriccion;
+            if (col == null) col = c;
+        }
+        if (col != null) alturaPies = transform.position.y - col.bounds.min.y;
     }
 
     void Update()
     {
         // Quieto mientras hay una ventana abierta (clasificar, pausa, ¡ganaste!)
-        if (KiboElOrigen.KiboJuego.UIAbierta)
+        if (KiboElOrigen.KiboJuego.UIAbierta || (GameManager.Instance != null && GameManager.Instance.estaEnMinijuego))
         {
             x = 0;
             z = 0;
@@ -53,15 +85,11 @@ public class PlayerMovement : MonoBehaviour
 
         Vector3 movement = Direccion();
 
-        // ROTACIÓN SUAVE
-        if (movement.magnitude > 0.1f)
+        // ROTACIÓN SUAVE (se aplica en FixedUpdate con la física para que no tiemble)
+        girar = movement.magnitude > 0.1f;
+        if (girar)
         {
-            Quaternion targetRotation = Quaternion.LookRotation(movement);
-            transform.rotation = Quaternion.Slerp(
-                transform.rotation,
-                targetRotation,
-                rotationSpeed * Time.deltaTime
-            );
+            rotacionObjetivo = Quaternion.LookRotation(movement);
 
             if (model != null)
             {
@@ -108,8 +136,62 @@ public class PlayerMovement : MonoBehaviour
             ? superSpeed
             : speed;
 
+        Vector3 vel = movement * currentSpeed;
+
+        // Pegado al suelo: sigue lomas y pequeños escalones sin trabarse
+        if (pegarAlSuelo && col != null)
+        {
+            float dt = Time.fixedDeltaTime;
+            float pies = rb.position.y - alturaPies;
+            float sueloY;
+            if (BuscarSuelo(rb.position + movement * 0.1f, pies, out sueloY))
+            {
+                float dif = sueloY - pies;
+                if (dif > -0.08f && dif <= pasoMaximo)
+                {
+                    // en el suelo (o subiendo un escalón pequeño)
+                    velocidadY = 0f;
+                    vel.y = Mathf.Clamp(dif * 15f, -8f, 8f);
+                }
+                else if (dif <= -0.08f)
+                {
+                    // hay un desnivel: cae hasta el suelo
+                    velocidadY -= gravedad * dt;
+                    vel.y = Mathf.Max(velocidadY, dif / dt);
+                }
+                else
+                {
+                    vel.y = 0f; // es una pared: la colisión la detiene
+                }
+            }
+            else
+            {
+                velocidadY -= gravedad * dt;
+                vel.y = Mathf.Max(velocidadY, -30f);
+            }
+        }
+
         // Movimiento físico fluido
-        rb.linearVelocity = movement * currentSpeed;
+        rb.linearVelocity = vel;
+
+        if (girar)
+            rb.MoveRotation(Quaternion.Slerp(rb.rotation, rotacionObjetivo, rotationSpeed * Time.fixedDeltaTime));
+    }
+
+    bool BuscarSuelo(Vector3 posicion, float pies, out float sueloY)
+    {
+        sueloY = 0f;
+        Vector3 origen = new Vector3(posicion.x, pies + pasoMaximo + 0.3f, posicion.z);
+        var hits = Physics.RaycastAll(origen, Vector3.down, pasoMaximo + 4f, ~0, QueryTriggerInteraction.Ignore);
+        float mejor = float.MaxValue;
+        bool hay = false;
+        foreach (var h in hits)
+        {
+            if (h.transform.IsChildOf(transform)) continue;          // el propio personaje
+            if (h.collider.CompareTag("ObjetoAgarrable")) continue;  // residuos pequeños
+            if (h.distance < mejor) { mejor = h.distance; sueloY = h.point.y; hay = true; }
+        }
+        return hay;
     }
 
     public bool EstaQuieto()

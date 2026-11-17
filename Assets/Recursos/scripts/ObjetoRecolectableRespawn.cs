@@ -19,6 +19,12 @@ public class ObjetoRecolectableRespawn : MonoBehaviour
         col = GetComponent<Collider>();
     }
 
+    // Kibo: si el residuo se movió de padre (estaba dentro de otro residuo), se actualiza aquí
+    public void FijarPadreInicial(Transform padre)
+    {
+        padreInicial = padre;
+    }
+
     public void OcultarObjeto()
     {
         gameObject.SetActive(false);

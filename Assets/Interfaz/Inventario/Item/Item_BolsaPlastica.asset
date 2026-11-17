@@ -16,5 +16,6 @@ MonoBehaviour:
   icono: {fileID: -1635218166, guid: d840a69009e98d7498f4bb0ef11e4f6e, type: 3}
   nombreVisible: "Bolsa pl\xE1stica"
   canecaManual: 1
-  caneca: 0
-  explicacion: "El pl\xE1stico limpio se puede reciclar."
+  caneca: 1
+  explicacion: "Las bolsas pl\xE1sticas casi siempre est\xE1n sucias o mezcladas, por eso
+    van a la caneca negra."
